@@ -4,11 +4,12 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley;
+using StardewValley.GameData.Characters;
 
 namespace BirthdayQuest
 {
     /// <summary>The mod entry point.</summary>
-    internal sealed class ModEntry : Mod
+    internal sealed class MyMod : Mod
     {
         /*********
         ** Public methods
@@ -17,24 +18,67 @@ namespace BirthdayQuest
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.DayStarted += this.BirthdayMessage;
         }
 
 
         /*********
         ** Private methods
         *********/
-        /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event data.</param>
-        private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+        private void BirthdayMessage(object? sender, DayStartedEventArgs e)
         {
-            // ignore if player hasn't loaded a save yet
-            if (!Context.IsWorldReady)
-                return;
+            this.Monitor.Log("WOW, new day!", LogLevel.Info);
 
-            // print button presses to the console window
-            this.Monitor.Log($"{Game1.player.Name} pressed {e.Button}.", LogLevel.Debug);
+            // get list of birthdays
+
+            var allCharacterData = this.Helper.GameContent.Load<Dictionary<string, CharacterData>>("Data/Characters");
+
+            var birthdays = new Dictionary< (Season season, int Day), List<string>>();
+
+            foreach (var npc in allCharacterData)
+            {
+                
+                CharacterData data = npc.Value;
+
+                if (data.BirthSeason is null)
+                {
+                    continue;
+                }
+
+                var birthSeasonDay = (data.BirthSeason.Value, data.BirthDay);
+
+                if (!birthdays.ContainsKey(birthSeasonDay)){
+                    birthdays[birthSeasonDay] = new List<string>();
+                }
+
+                birthdays[birthSeasonDay].Add(npc.Key);
+
+                //this.Monitor.Log($"added npc {npc.Key} and their birthday {birthSeasonDay}!", LogLevel.Info);
+            }
+
+            // get today's date
+
+            var currDate = SDate.Now();
+            var today = (currDate.Season, currDate.Day);
+
+            List<string>? birthdayNpcs = null;
+
+            // printing first
+            if (birthdays.ContainsKey(today))
+            {
+                birthdayNpcs = birthdays[today];
+            }
+
+            if (birthdayNpcs is null)
+            {
+                return;
+            }
+
+            foreach (var npcName in birthdayNpcs){
+                this.Monitor.Log($"Today is {npcName}'s birthday! Consider give them a gift.", LogLevel.Info);
+            }
         }
     }
 }
