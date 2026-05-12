@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using Microsoft.VisualBasic;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
@@ -18,8 +20,9 @@ namespace BirthdayQuest
         public override void Entry(IModHelper helper)
         {
             helper.Events.GameLoop.DayStarted += this.AllBirthdayNotification;
-        }
+            helper.Events.Display.MenuChanged += this.OnClosedMenu;
 
+        }
 
         /*********
         ** Private methods
@@ -44,13 +47,13 @@ namespace BirthdayQuest
 
                 var birthSeasonDay = (data.BirthSeason.Value, data.BirthDay);
 
-
                 // list to guard against mod NPCs have the same birthday as original NPCss
                 if (!birthdays.ContainsKey(birthSeasonDay)){
                     birthdays[birthSeasonDay] = new List<string>();
                 }
 
                 birthdays[birthSeasonDay].Add(npc.Key);
+                birthdays[birthSeasonDay].Add("Abigail");
 
                 //this.Monitor.Log($"added npc {npc.Key} and their birthday {birthSeasonDay}!", LogLevel.Info);
             }
@@ -73,24 +76,43 @@ namespace BirthdayQuest
 
         }
 
-        private void BirthdayNotification(string npcName)
+        private List<string> birthdayNpc =  new List<string>();
+
+        private static void BirthdayNotification(string npcName)
         {
             string message = $"It's {npcName}'s Birthday today! ^Consider giving them something nice.";
             Game1.activeClickableMenu = new DialogueBox(message);
+        }
+
+        private void ShowNextBirthdayNotification()
+        {
+            this.Monitor.Log($"{birthdayNpc[0]}'s birthday", LogLevel.Info);
+            BirthdayNotification(birthdayNpc[0]);
+            birthdayNpc.RemoveAt(0);
         }
 
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event data.</param>
         private void AllBirthdayNotification(object? sender, DayStartedEventArgs e)
         {
-            var birthdayNpc = this.GetTodayBirthdayNpcs();
+            birthdayNpc =  this.GetTodayBirthdayNpcs();
+            ShowNextBirthdayNotification();
+        }
 
-            //TODO: check if multiple birthday on same day dialogue box interaction
-
-            foreach (var npc in birthdayNpc)
+        private void OnClosedMenu(object? sender, MenuChangedEventArgs e)
+        {
+            if (e.NewMenu is not null)
             {
-                BirthdayNotification(npc);
+                return;
             }
+
+            if (birthdayNpc.Count == 0)
+            {
+                return;
+            }
+
+            ShowNextBirthdayNotification();
+
         }
     }
 }
