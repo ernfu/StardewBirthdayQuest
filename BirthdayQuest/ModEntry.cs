@@ -1,10 +1,9 @@
-using System;
-using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.GameData.Characters;
+using StardewValley.Menus;
 
 namespace BirthdayQuest
 {
@@ -18,23 +17,18 @@ namespace BirthdayQuest
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            helper.Events.GameLoop.DayStarted += this.BirthdayMessage;
+            helper.Events.GameLoop.DayStarted += this.AllBirthdayNotification;
         }
 
 
         /*********
         ** Private methods
         *********/
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event data.</param>
-        private void BirthdayMessage(object? sender, DayStartedEventArgs e)
+
+        // get birthdays - key: season/ day and value: npc names
+        private Dictionary< (Season season, int Day), List<string>> GetAllBirthdays()
         {
-            this.Monitor.Log("WOW, new day!", LogLevel.Info);
-
-            // get list of birthdays
-
             var allCharacterData = this.Helper.GameContent.Load<Dictionary<string, CharacterData>>("Data/Characters");
-
             var birthdays = new Dictionary< (Season season, int Day), List<string>>();
 
             foreach (var npc in allCharacterData)
@@ -42,6 +36,7 @@ namespace BirthdayQuest
                 
                 CharacterData data = npc.Value;
 
+                // mod compatible way - BirthSeason could be null
                 if (data.BirthSeason is null)
                 {
                     continue;
@@ -49,6 +44,8 @@ namespace BirthdayQuest
 
                 var birthSeasonDay = (data.BirthSeason.Value, data.BirthDay);
 
+
+                // list to guard against mod NPCs have the same birthday as original NPCss
                 if (!birthdays.ContainsKey(birthSeasonDay)){
                     birthdays[birthSeasonDay] = new List<string>();
                 }
@@ -58,26 +55,41 @@ namespace BirthdayQuest
                 //this.Monitor.Log($"added npc {npc.Key} and their birthday {birthSeasonDay}!", LogLevel.Info);
             }
 
-            // get today's date
+            return birthdays;
+        }
 
+        private List<string> GetTodayBirthdayNpcs()
+        {
             var currDate = SDate.Now();
             var today = (currDate.Season, currDate.Day);
 
-            List<string>? birthdayNpcs = null;
+            var birthdays = this.GetAllBirthdays();
 
-            // printing first
-            if (birthdays.ContainsKey(today))
+            if (birthdays.TryGetValue(today, out var birthdayNpcs))
             {
-                birthdayNpcs = birthdays[today];
+                return birthdayNpcs;
             }
+            return new List<string>();
 
-            if (birthdayNpcs is null)
+        }
+
+        private void BirthdayNotification(string npcName)
+        {
+            string message = $"It's {npcName}'s Birthday today! ^Consider giving them something nice.";
+            Game1.activeClickableMenu = new DialogueBox(message);
+        }
+
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event data.</param>
+        private void AllBirthdayNotification(object? sender, DayStartedEventArgs e)
+        {
+            var birthdayNpc = this.GetTodayBirthdayNpcs();
+
+            //TODO: check if multiple birthday on same day dialogue box interaction
+
+            foreach (var npc in birthdayNpc)
             {
-                return;
-            }
-
-            foreach (var npcName in birthdayNpcs){
-                this.Monitor.Log($"Today is {npcName}'s birthday! Consider give them a gift.", LogLevel.Info);
+                BirthdayNotification(npc);
             }
         }
     }
