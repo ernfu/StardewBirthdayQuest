@@ -1,11 +1,10 @@
-using System.Runtime.CompilerServices;
-using Microsoft.VisualBasic;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.GameData.Characters;
 using StardewValley.Menus;
+using StardewValley.GameData.SpecialOrders;
 
 namespace BirthdayQuest
 {
@@ -19,13 +18,22 @@ namespace BirthdayQuest
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
+            helper.Events.GameLoop.DayStarted += this.OnDayStarted;
+            helper.Events.GameLoop.DayStarted += this.AddAllBirthdayQuest;
             helper.Events.GameLoop.DayStarted += this.AllBirthdayNotification;
+
             helper.Events.Display.MenuChanged += this.OnClosedMenu;
+
+            helper.Events.Content.AssetRequested += this.OnAssetRequested;
 
         }
 
         /*********
         ** Private methods
+        *********/
+
+        /*********
+        ** helper funcs - getting birthdays
         *********/
 
         // get birthdays - key: season/ day and value: npc names
@@ -78,6 +86,85 @@ namespace BirthdayQuest
 
         private List<string> birthdayNpc =  new List<string>();
 
+        private void OnDayStarted(object? sender, DayStartedEventArgs e)
+        {
+            birthdayNpc =  this.GetTodayBirthdayNpcs();
+        }
+
+        /*********
+        ** Quests
+        *********/
+
+        // Register all birthday quests to special order data
+        private SpecialOrderData BuildBirthdaySpecialOrderData(string npc){
+            
+            var newSpecialOrder = new SpecialOrderData();
+            newSpecialOrder.Name = $"Birthday Present for {npc}";
+            newSpecialOrder.Requester = npc;
+            newSpecialOrder.Duration = QuestDuration.OneDay;
+            newSpecialOrder.Text = $"It's {npc}'s Birthday today! Give them something nice.";
+
+            // add objective to order; need SpecialOrderObjectiveData
+            var newObjective = new SpecialOrderObjectiveData();
+            newObjective.Type = "Gift";
+            newObjective.Text = $"Give {npc} a birthday gift.";
+            newObjective.RequiredCount = "1";
+            newObjective.Data = new Dictionary<string, string>{{"MinimumLikeLevel", "None"}};
+            newSpecialOrder.Objectives = new List<SpecialOrderObjectiveData> {newObjective};
+
+            // add rewards to order; need SpecialOrderRewardData
+            var newRewards = new SpecialOrderRewardData();
+            newRewards.Type = "Friendship";
+            newRewards.Data = new Dictionary<string, string>{{"Amount", "0"}, {"TargetName", npc}};
+            newSpecialOrder.Rewards = new List<SpecialOrderRewardData> {newRewards};
+
+            return newSpecialOrder;
+        }
+
+        private void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
+        {
+            //here
+            if (!e.NameWithoutLocale.IsEquivalentTo("Data/SpecialOrders"))
+            {
+                return;
+            }
+
+            var allBirthdays = GetAllBirthdays();
+
+            foreach (var birthday in allBirthdays){
+                // here
+                foreach (var npc in birthday.Value)
+
+                    e.Edit(asset =>
+                    {
+                        var data = asset.AsDictionary<string, SpecialOrderData>().Data;
+                        string orderId = $"BirthdayQuest.{npc}.BirthdayGift";
+
+                        data[orderId] = this.BuildBirthdaySpecialOrderData(npc);
+
+                    }
+                    );
+            }
+        }
+
+        // add quest to active quests for birthday npcs
+        private void AddBirthdayQuest(string npc)
+        {
+            var orderId = $"BirthdayQuest.{npc}.BirthdayGift";
+            Game1.player.team.AddSpecialOrder(orderId, forceRepeatable: true);
+        }
+
+        private void AddAllBirthdayQuest(object? sender, DayStartedEventArgs e)
+        {
+            // here
+            foreach (var npc in birthdayNpc){
+                AddBirthdayQuest(npc);
+            }
+        }
+
+        /*********
+        ** Notifications
+        *********/
         private static void BirthdayNotification(string npcName)
         {
             string message = $"It's {npcName}'s Birthday today! ^Consider giving them something nice.";
@@ -86,6 +173,11 @@ namespace BirthdayQuest
 
         private void ShowNextBirthdayNotification()
         {
+            if (birthdayNpc.Count == 0)
+            {
+                return;
+            }
+
             this.Monitor.Log($"{birthdayNpc[0]}'s birthday", LogLevel.Info);
             BirthdayNotification(birthdayNpc[0]);
             birthdayNpc.RemoveAt(0);
@@ -95,7 +187,6 @@ namespace BirthdayQuest
         /// <param name="e">The event data.</param>
         private void AllBirthdayNotification(object? sender, DayStartedEventArgs e)
         {
-            birthdayNpc =  this.GetTodayBirthdayNpcs();
             ShowNextBirthdayNotification();
         }
 
