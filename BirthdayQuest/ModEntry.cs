@@ -124,10 +124,10 @@ namespace BirthdayQuest
 
             // add objective to order; need SpecialOrderObjectiveData
             var newObjective = new SpecialOrderObjectiveData();
-            newObjective.Type = "Gift";
+            newObjective.Type = "Deliver";
             newObjective.Text = $"Give {npc} a birthday gift.";
             newObjective.RequiredCount = "1";
-            newObjective.Data = new Dictionary<string, string>{{"MinimumLikeLevel", "None"}};
+            newObjective.Data = new Dictionary<string, string>{{"TargetName", npc}};
             newSpecialOrder.Objectives = new List<SpecialOrderObjectiveData> {newObjective};
 
             // add rewards to order; need SpecialOrderRewardData
