@@ -1,10 +1,10 @@
 {
     "Name": "Birthday Quest",
     "Author": "ernfu",
-    "Version": "1.0.0",
+    "Version": "1.0.1",
     "Description": "A quest for the birthday of the player",
     "UniqueID": "ern.birthdayquest",
     "EntryDll": "BirthdayQuest.dll",
     "MinimumApiVersion": "4.0.0",
-    "UpdateKeys": []
+    "UpdateKeys": ["Nexus:46184"]
   }
