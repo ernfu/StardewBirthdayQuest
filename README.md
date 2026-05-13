@@ -2,6 +2,10 @@
 
 A mod for Stardew Valley that reminds you when it's someone's birthday and adds 1-day "birthday gift" task to you quest borad.
 
+![Birthday quest](screenshots/quest2.png)
+
+![Wake-up birthday reminder](screenshots/wake_msg.png)
+
 Download it here: https://www.nexusmods.com/stardewvalley/mods/46184 or go to release for the zip.
 
 e.g. on Spring 14 (Haley's birthday)...
