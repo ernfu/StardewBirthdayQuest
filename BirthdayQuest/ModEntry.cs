@@ -5,7 +5,6 @@ using StardewValley;
 using StardewValley.GameData.Characters;
 using StardewValley.Menus;
 using StardewValley.GameData.SpecialOrders;
-using Microsoft.VisualBasic;
 
 namespace BirthdayQuest
 {
@@ -19,11 +18,9 @@ namespace BirthdayQuest
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            helper.Events.GameLoop.GameLaunched += this.OnGameLaunch;
+            helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
 
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
-            helper.Events.GameLoop.DayStarted += this.AddAllBirthdayQuest;
-            helper.Events.GameLoop.DayStarted += this.AllBirthdayNotification;
 
             helper.Events.Display.MenuChanged += this.OnClosedMenu;
 
@@ -64,9 +61,6 @@ namespace BirthdayQuest
                 }
 
                 birthdays[birthSeasonDay].Add(npc.Key);
-                birthdays[birthSeasonDay].Add("Abigail");
-
-                //this.Monitor.Log($"added npc {npc.Key} and their birthday {birthSeasonDay}!", LogLevel.Info);
             }
 
             return birthdays;
@@ -78,13 +72,13 @@ namespace BirthdayQuest
 
         private Dictionary< (Season season, int Day), List<string>> allBirthday = new();
 
-        private void OnGameLaunch(object? sender, GameLaunchedEventArgs e)
+        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
             allBirthday = this.GetAllBirthdays();
         }
 
         /*********
-        ** day starts - load today's birthday npcs
+        ** day starts - load today's birthday npcs & add quest and notifications
         *********/
 
         private List<string> GetTodayBirthdayNpcs()
@@ -107,6 +101,12 @@ namespace BirthdayQuest
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
             birthdayNpc =  this.GetTodayBirthdayNpcs();
+
+            foreach (var npc in birthdayNpc){
+                AddBirthdayQuest(npc);
+            }
+
+            ShowNextBirthdayNotification();
         }
 
         /*********
@@ -120,7 +120,7 @@ namespace BirthdayQuest
             newSpecialOrder.Name = $"{npc}'s birthday";
             newSpecialOrder.Requester = npc;
             newSpecialOrder.Duration = QuestDuration.OneDay;
-            newSpecialOrder.Text = $"It's {npc}'s Birthday today! Give them something nice.";
+            newSpecialOrder.Text = $"It's {npc}'s Birthday today! \nGive them something nice.";
 
             // add objective to order; need SpecialOrderObjectiveData
             var newObjective = new SpecialOrderObjectiveData();
@@ -147,20 +147,15 @@ namespace BirthdayQuest
                 return;
             }
 
-            var allBirthdays = this.allBirthday;
-
-            //Game1.player.friendshipData
+            var allBirthdays = this.GetAllBirthdays();
 
             foreach (var birthday in allBirthdays){
-                // here
                 foreach (var npc in birthday.Value)
 
                     e.Edit(asset =>
                     {
                         var data = asset.AsDictionary<string, SpecialOrderData>().Data;
                         string orderId = $"BirthdayQuest.{npc}.BirthdayGift";
-
-                        //this.Monitor.Log($"added {orderId} to log!", LogLevel.Info);
 
                         data[orderId] = this.BuildBirthdaySpecialOrderData(npc);
 
@@ -176,18 +171,8 @@ namespace BirthdayQuest
 
             this.Monitor.Log($"added {orderId} to active!", LogLevel.Info);
 
-            //got rid of force repeatable
             Game1.player.team.AddSpecialOrder(orderId, forceRepeatable: true);
 
-            //Game1.player.team.specialOrders
-        }
-
-        private void AddAllBirthdayQuest(object? sender, DayStartedEventArgs e)
-        {
-            // here
-            foreach (var npc in birthdayNpc){
-                AddBirthdayQuest(npc);
-            }
         }
 
         /*********
@@ -209,13 +194,6 @@ namespace BirthdayQuest
             this.Monitor.Log($"{birthdayNpc[0]}'s birthday", LogLevel.Info);
             BirthdayNotification(birthdayNpc[0]);
             birthdayNpc.RemoveAt(0);
-        }
-
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event data.</param>
-        private void AllBirthdayNotification(object? sender, DayStartedEventArgs e)
-        {
-            ShowNextBirthdayNotification();
         }
 
         private void OnClosedMenu(object? sender, MenuChangedEventArgs e)
