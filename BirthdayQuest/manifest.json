@@ -1,6 +1,6 @@
 {
     "Name": "Birthday Quest",
-    "Author": "ern",
+    "Author": "ernfu",
     "Version": "1.0.0",
     "Description": "A quest for the birthday of the player",
     "UniqueID": "ern.birthdayquest",
