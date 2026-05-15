@@ -24,6 +24,8 @@ namespace BirthdayQuest
 
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
 
+            helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
+
             helper.Events.Display.MenuChanged += this.OnClosedMenu;
 
             helper.Events.Content.AssetRequested += this.OnAssetRequested;
@@ -132,7 +134,14 @@ namespace BirthdayQuest
 
             if (birthdays.TryGetValue(today, out var birthdayNpcs))
             {
-                return birthdayNpcs;
+                var todayBirthdays = new List<string>(birthdayNpcs);
+
+                if (Game1.year < 2)
+                {
+                    todayBirthdays.Remove("Kent");
+                }
+
+                return new List<string>(todayBirthdays);
             }
             return new List<string>();
 
@@ -148,7 +157,7 @@ namespace BirthdayQuest
                 AddBirthdayQuest(npc);
             }
 
-            ShowNextBirthdayNotification();
+            //ShowNextBirthdayNotification();
         }
 
         /*********
@@ -255,6 +264,31 @@ namespace BirthdayQuest
             }
 
             if (birthdayNpc.Count == 0)
+            {
+                return;
+            }
+
+            ShowNextBirthdayNotification();
+
+        }
+
+        // notification shows after black screen disappears - fix with check below
+        private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
+        {
+            //here
+            if (birthdayNpc.Count == 0)
+            {
+                return;
+            }
+
+            // don't show notification yet if still loading and black screen
+            if (Game1.IsFading())
+            {
+                return;
+            }
+
+            // if there is a current pop up, wait
+            if (Game1.activeClickableMenu is not null)
             {
                 return;
             }
