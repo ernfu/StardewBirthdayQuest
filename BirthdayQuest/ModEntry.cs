@@ -93,7 +93,7 @@ namespace BirthdayQuest
                 return tasteItems;
             }
 
-            foreach (var item in GetAllItems()){
+            foreach (var item in this.allItems){
                 var itemId = "(O)" + item;
                 Item itemObject = ItemRegistry.Create(itemId);
                 int itemTaste = npc.getGiftTasteForThisItem(itemObject);
