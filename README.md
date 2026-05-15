@@ -15,7 +15,8 @@ e.g. on Spring 14 (Haley's birthday)...
 Perfect for people who always forget to give birthday presents!
 
 ### TODOs
-- add recommended gift (by taste) to dialoge/ quest
+[x] add recommended gift (by taste) to dialoge/ quest - add toggle on next
+- fix pronouns
+- add npc schedule to quest
 - add cross mod compatibility
 - add translation compatibility
-

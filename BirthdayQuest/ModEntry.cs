@@ -5,6 +5,8 @@ using StardewValley;
 using StardewValley.GameData.Characters;
 using StardewValley.Menus;
 using StardewValley.GameData.SpecialOrders;
+using StardewValley.GameData.Objects;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace BirthdayQuest
 {
@@ -67,14 +69,54 @@ namespace BirthdayQuest
         }
 
         /*********
-        ** game starts - load all birthdays
+        ** helper funcs - getting NPC gift taste
+        *********/
+
+        private List<string> GetAllItems()
+        {
+            return this.Helper.GameContent.Load<Dictionary<string, ObjectData>>("Data/Objects").Keys.ToList();
+        }
+        private List<string> GetItemByTaste(string npcName, string taste)
+        {
+
+            int tasteNum = taste switch
+            {
+                "love" => 0,
+                "like" => 2,
+                _ => 4
+            };
+
+            var tasteItems = new List<string>();
+
+            var npc = Game1.getCharacterFromName(npcName);
+            if (npc is null){
+                return tasteItems;
+            }
+
+            foreach (var item in GetAllItems()){
+                var itemId = "(O)" + item;
+                Item itemObject = ItemRegistry.Create(itemId);
+                int itemTaste = npc.getGiftTasteForThisItem(itemObject);
+
+                if (itemTaste == tasteNum){
+                    tasteItems.Add(itemObject.DisplayName);
+                }
+            }
+
+            return tasteItems;
+        }
+
+        /*********
+        ** load save - load all birthdays + all object items
         *********/
 
         private Dictionary< (Season season, int Day), List<string>> allBirthday = new();
+        private List<string> allItems = new();
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
             allBirthday = this.GetAllBirthdays();
+            allItems = this.GetAllItems();
         }
 
         /*********
@@ -120,7 +162,16 @@ namespace BirthdayQuest
             newSpecialOrder.Name = $"{npc}'s birthday";
             newSpecialOrder.Requester = npc;
             newSpecialOrder.Duration = QuestDuration.OneDay;
-            newSpecialOrder.Text = $"It's {npc}'s Birthday today! \nGive them something nice.";
+
+            var baseText =  $"It's {npc}'s Birthday today! \nGive them something nice. ";
+
+            var lovedItems = this.GetItemByTaste(npc, "love");
+            var lovedItemsText = "\n\nThey love " + string.Join(", ", lovedItems) + ".";
+
+            //var likedItems = this.GetItemByTaste(npc, "like");
+            //var likedItemsText = "\n\nThey like " + string.Join(", ", likedItems) + ".";
+
+            newSpecialOrder.Text = baseText + lovedItemsText;
 
             // add objective to order; need SpecialOrderObjectiveData
             var newObjective = new SpecialOrderObjectiveData();
