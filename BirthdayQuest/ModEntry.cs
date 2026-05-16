@@ -163,12 +163,12 @@ namespace BirthdayQuest
 
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
+            birthdayNpc =  this.GetTodayBirthdayNpcs();
+
             if (!this.Config.BirthdayQuest)
             {
                 return;
             }
-
-            birthdayNpc =  this.GetTodayBirthdayNpcs();
 
             foreach (var npc in birthdayNpc){
                 AddBirthdayQuest(npc);
