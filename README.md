@@ -35,9 +35,9 @@ Available Config options:
 
 
 ### TODOs
-[x] add recommended gift (by taste) to dialoge/ quest - added toggle on from config.json
-    [] add support for Generic Mod Config Menu (GMCM)
-[x] fix pronouns
-- add npc schedule to quest
-- add cross mod compatibility
-- add translation compatibility
+- [x] add recommended gift (by taste) to dialoge/ quest - added toggle on from config.json
+- [ ] add support for Generic Mod Config Menu (GMCM)
+- [x] fix pronouns
+- [ ] add npc schedule to quest
+- [ ] add cross mod compatibility
+- [ ] add translation compatibility
