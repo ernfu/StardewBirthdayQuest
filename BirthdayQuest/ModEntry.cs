@@ -86,38 +86,52 @@ namespace BirthdayQuest
         ** helper funcs - getting NPC gift taste
         *********/
 
-        private List<string> GetAllItems()
+        private static List<string> NormaliseTasteString(string tasteString)
         {
-            return this.Helper.GameContent.Load<Dictionary<string, ObjectData>>("Data/Objects").Keys.ToList();
+            return tasteString.Split(" ").ToList();
         }
-        private List<string> GetItemByTaste(string npcName, string taste)
+
+        private List<string> GetLovedGiftNames(string npc)
         {
 
-            int tasteNum = taste switch
+            var universalLove = NormaliseTasteString(allGiftTaste["Universal_Love"]);
+
+            // mimic npc.getGiftTasteForThisItem manual override for Stardrop Tea
+            universalLove.Add("StardropTea");
+
+            if (!allGiftTaste.TryGetValue(npc, out var npcGiftTaste))
             {
-                "love" => 0,
-                "like" => 2,
-                _ => 4
-            };
-
-            var tasteItems = new List<string>();
-
-            var npc = Game1.getCharacterFromName(npcName);
-            if (npc is null){
-                return tasteItems;
+                // guard - some mods might not add gift taste to their npcs
+                return new List<string>();
             }
 
-            foreach (var item in this.allItems){
-                var itemId = "(O)" + item;
-                Item itemObject = ItemRegistry.Create(itemId);
-                int itemTaste = npc.getGiftTasteForThisItem(itemObject);
+            var blocks = npcGiftTaste.Split("/");
 
-                if (itemTaste == tasteNum){
-                    tasteItems.Add(itemObject.DisplayName);
+            var loved = NormaliseTasteString(blocks[1]);
+            var liked = NormaliseTasteString(blocks[3]);
+            var disliked = NormaliseTasteString(blocks[5]);
+            var hated = NormaliseTasteString(blocks[7]);
+            var neutral = NormaliseTasteString(blocks[9]);
+
+            // var npcLoved = universalLove.Concat(loved).ToList();
+
+            var delete = liked.Concat(disliked).Concat(hated).Concat(neutral).ToList();
+
+            universalLove.RemoveAll(item => delete.Contains(item));
+            var npcLoved = universalLove.Concat(loved).ToList();
+
+            var lovedItems = new List<string>();
+
+            foreach (var id in npcLoved){
+                if (allObjectData.TryGetValue(id, out var itemData))
+                {
+                    lovedItems.Add(itemData.Name);
                 }
             }
 
-            return tasteItems;
+            lovedItems.Sort();
+
+            return lovedItems;
         }
 
         /*********
@@ -125,12 +139,14 @@ namespace BirthdayQuest
         *********/
 
         private Dictionary< (Season season, int Day), List<string>> allBirthday = new();
-        private List<string> allItems = new();
+        private Dictionary<string, string> allGiftTaste = new();
+        private Dictionary<string, ObjectData> allObjectData = new();
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
             allBirthday = this.GetAllBirthdays();
-            allItems = this.GetAllItems();
+            allGiftTaste = this.Helper.GameContent.Load<Dictionary<string, string>>("Data/NPCGiftTastes");
+            allObjectData = this.Helper.GameContent.Load<Dictionary<string, ObjectData>>("Data/Objects");
         }
 
         /*********
@@ -185,13 +201,13 @@ namespace BirthdayQuest
         {
             if (lovedItems.Count == 1)
             {
-                return "\n\nThey Love " + lovedItems[0] + ".";
+                return "\n\nThey love " + lovedItems[0] + ".";
             }
 
             var front = lovedItems.Take(lovedItems.Count - 1);
             var last = lovedItems[lovedItems.Count - 1];
 
-            return "\n\nThey Love " + string.Join(", ", front) + ", and " + last + ".";
+            return "\n\nThey love " + string.Join(", ", front) + ", and " + last + ".";
         }
 
         // Register all birthday quests to special order data
@@ -206,9 +222,12 @@ namespace BirthdayQuest
 
             if (this.Config.LovedGiftsHint)
             {
-                var lovedItems = this.GetItemByTaste(npc, "love");
-                var lovedItemsText = this.FancyJoin(lovedItems);
-                baseText = baseText + lovedItemsText;
+                var lovedItems = this.GetLovedGiftNames(npc);
+                if (lovedItems.Count > 0)
+                {
+                    var lovedItemsText = this.FancyJoin(lovedItems);
+                    baseText = baseText + lovedItemsText;
+                }
             }
 
             //var likedItems = this.GetItemByTaste(npc, "like");
@@ -276,9 +295,9 @@ namespace BirthdayQuest
         /*********
         ** Notifications
         *********/
-        private static void BirthdayNotification(string npcName)
+        private static void BirthdayNotification(string npc)
         {
-            string message = $"It's {npcName}'s Birthday today! ^Consider giving them something nice.";
+            string message = $"It's {npc}'s Birthday today! ^Consider giving them something nice.";
             Game1.activeClickableMenu = new DialogueBox(message);
         }
 
