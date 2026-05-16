@@ -298,7 +298,19 @@ namespace BirthdayQuest
                 return;
             }
 
-            var allBirthdays = new Dictionary< (Season season, int Day), List<string>>(this.allBirthday);
+            // not sure when is AssetRequested fired
+            // gaurd against if AssetRequested is run before SaveLoaded
+            if (this.allCharacterData.Count == 0)
+            {
+                allCharacterData = this.Helper.GameContent.Load<Dictionary<string, CharacterData>>("Data/Characters");
+                allBirthday = this.GetAllBirthdays();
+            }
+
+            if (this.Config.LovedGiftsHint && this.allGiftTaste.Count == 0)
+            {
+                allGiftTaste = this.Helper.GameContent.Load<Dictionary<string, string>>("Data/NPCGiftTastes");
+                allObjectData = this.Helper.GameContent.Load<Dictionary<string, ObjectData>>("Data/Objects");
+            }
 
             e.Edit(asset =>
             {
@@ -308,9 +320,6 @@ namespace BirthdayQuest
                 {
                     foreach (var npc in birthday.Value)
                     {
-
-                        //if (!this.)
-
 
                         string orderId = $"BirthdayQuest.{npc}.BirthdayGift";
                         data[orderId] = this.BuildBirthdaySpecialOrderData(npc);
