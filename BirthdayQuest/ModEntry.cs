@@ -49,7 +49,6 @@ namespace BirthdayQuest
         // get birthdays - key: season/ day and value: npc names
         private Dictionary< (Season season, int Day), List<string>> GetAllBirthdays()
         {
-            var allCharacterData = this.Helper.GameContent.Load<Dictionary<string, CharacterData>>("Data/Characters");
             var birthdays = new Dictionary< (Season season, int Day), List<string>>();
 
             foreach (var npc in allCharacterData)
@@ -139,11 +138,13 @@ namespace BirthdayQuest
         *********/
 
         private Dictionary< (Season season, int Day), List<string>> allBirthday = new();
+        private Dictionary<string, CharacterData> allCharacterData = new();
         private Dictionary<string, string> allGiftTaste = new();
         private Dictionary<string, ObjectData> allObjectData = new();
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
+            allCharacterData = this.Helper.GameContent.Load<Dictionary<string, CharacterData>>("Data/Characters");
             allBirthday = this.GetAllBirthdays();
             allGiftTaste = this.Helper.GameContent.Load<Dictionary<string, string>>("Data/NPCGiftTastes");
             allObjectData = this.Helper.GameContent.Load<Dictionary<string, ObjectData>>("Data/Objects");
@@ -194,20 +195,55 @@ namespace BirthdayQuest
         }
 
         /*********
+        ** Pronouns
+        *********/
+
+        private record PronounSet(string Subject, string Object, string Possessive, string LoveVerb);
+
+        private PronounSet GetPronouns(string npc)
+        {
+            var pronounsUnknown = new PronounSet("they", "them", "their", "love");
+
+            if (!this.allCharacterData.TryGetValue(npc, out var data))
+            {
+                return pronounsUnknown;
+            }
+
+            switch (data.Gender)
+            {
+                case Gender.Male:
+                    return new PronounSet("he", "him", "his", "loves");
+
+                case Gender.Female:
+                    return new PronounSet("she", "her", "her", "loves");
+
+                case Gender.Undefined:
+                    return pronounsUnknown;
+
+                default:
+                    return pronounsUnknown;
+
+            }
+        }
+
+        /*********
         ** Quests
         *********/
 
-        private string FancyJoin(List<string> lovedItems)
+        private string FancyJoin(List<string> lovedItems, PronounSet pronoun)
         {
+            var loveWord = pronoun.LoveVerb;
+            var subject = char.ToUpper(pronoun.Subject[0]) + pronoun.Subject[1..];
+
             if (lovedItems.Count == 1)
             {
-                return "\n\nThey love " + lovedItems[0] + ".";
+                return $"\n\n{subject} {loveWord} " + lovedItems[0] + ".";
             }
 
             var front = lovedItems.Take(lovedItems.Count - 1);
             var last = lovedItems[lovedItems.Count - 1];
 
-            return "\n\nThey love " + string.Join(", ", front) + ", and " + last + ".";
+            return $"\n\n{subject} {loveWord} " + string.Join(", ", front) + ", and " + last + ".";
         }
 
         // Register all birthday quests to special order data
@@ -218,14 +254,16 @@ namespace BirthdayQuest
             newSpecialOrder.Requester = npc;
             newSpecialOrder.Duration = QuestDuration.OneDay;
 
-            var baseText =  $"It's {npc}'s Birthday today! \nGive them something nice. ";
+            var pronouns = this.GetPronouns(npc);
+
+            var baseText =  $"It's {npc}'s Birthday today! \nGive {pronouns.Object} something nice. ";
 
             if (this.Config.LovedGiftsHint)
             {
                 var lovedItems = this.GetLovedGiftNames(npc);
                 if (lovedItems.Count > 0)
                 {
-                    var lovedItemsText = this.FancyJoin(lovedItems);
+                    var lovedItemsText = this.FancyJoin(lovedItems, pronouns);
                     baseText = baseText + lovedItemsText;
                 }
             }
@@ -295,9 +333,11 @@ namespace BirthdayQuest
         /*********
         ** Notifications
         *********/
-        private static void BirthdayNotification(string npc)
+        private void BirthdayNotification(string npc)
         {
-            string message = $"It's {npc}'s Birthday today! ^Consider giving them something nice.";
+            var pronoun = this.GetPronouns(npc);
+
+            string message = $"It's {npc}'s Birthday today! ^Consider giving {pronoun.Object} something nice.";
             Game1.activeClickableMenu = new DialogueBox(message);
         }
 
