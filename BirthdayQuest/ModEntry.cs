@@ -7,19 +7,25 @@ using StardewValley.Menus;
 using StardewValley.GameData.SpecialOrders;
 using StardewValley.GameData.Objects;
 using Microsoft.Xna.Framework.Graphics;
+using System.Diagnostics;
 
 namespace BirthdayQuest
 {
     /// <summary>The mod entry point.</summary>
     internal sealed class MyMod : Mod
     {
+        private ModConfig Config = new();
+
         /*********
         ** Public methods
         *********/
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        
         public override void Entry(IModHelper helper)
         {
+            this.Config = this.Helper.ReadConfig<ModConfig>();
+
             helper.Events.GameLoop.SaveLoaded += this.OnSaveLoaded;
 
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
@@ -53,6 +59,12 @@ namespace BirthdayQuest
 
                 // mod compatible way - BirthSeason could be null
                 if (data.BirthSeason is null)
+                {
+                    continue;
+                }
+
+                // skip if not sociable 
+                if (data.CanSocialize == "false")
                 {
                     continue;
                 }
@@ -151,6 +163,11 @@ namespace BirthdayQuest
 
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
+            if (!this.Config.BirthdayQuest)
+            {
+                return;
+            }
+
             birthdayNpc =  this.GetTodayBirthdayNpcs();
 
             foreach (var npc in birthdayNpc){
@@ -164,6 +181,19 @@ namespace BirthdayQuest
         ** Quests
         *********/
 
+        private string FancyJoin(List<string> lovedItems)
+        {
+            if (lovedItems.Count == 1)
+            {
+                return "\n\nThey Love " + lovedItems[0] + ".";
+            }
+
+            var front = lovedItems.Take(lovedItems.Count - 1);
+            var last = lovedItems[lovedItems.Count - 1];
+
+            return "\n\nThey Love " + string.Join(", ", front) + ", and " + last + ".";
+        }
+
         // Register all birthday quests to special order data
         private SpecialOrderData BuildBirthdaySpecialOrderData(string npc){
             
@@ -174,13 +204,17 @@ namespace BirthdayQuest
 
             var baseText =  $"It's {npc}'s Birthday today! \nGive them something nice. ";
 
-            var lovedItems = this.GetItemByTaste(npc, "love");
-            var lovedItemsText = "\n\nThey love " + string.Join(", ", lovedItems) + ".";
+            if (this.Config.LovedGiftsHint)
+            {
+                var lovedItems = this.GetItemByTaste(npc, "love");
+                var lovedItemsText = this.FancyJoin(lovedItems);
+                baseText = baseText + lovedItemsText;
+            }
 
             //var likedItems = this.GetItemByTaste(npc, "like");
             //var likedItemsText = "\n\nThey like " + string.Join(", ", likedItems) + ".";
 
-            newSpecialOrder.Text = baseText + lovedItemsText;
+            newSpecialOrder.Text = baseText;
 
             // add objective to order; need SpecialOrderObjectiveData
             var newObjective = new SpecialOrderObjectiveData();
@@ -207,21 +241,25 @@ namespace BirthdayQuest
                 return;
             }
 
-            var allBirthdays = this.GetAllBirthdays();
+            var allBirthdays = new Dictionary< (Season season, int Day), List<string>>(this.allBirthday);
 
-            foreach (var birthday in allBirthdays){
-                foreach (var npc in birthday.Value)
+            e.Edit(asset =>
+            {
+                var data = asset.AsDictionary<string, SpecialOrderData>().Data;
 
-                    e.Edit(asset =>
+                foreach (var birthday in allBirthday)
+                {
+                    foreach (var npc in birthday.Value)
                     {
-                        var data = asset.AsDictionary<string, SpecialOrderData>().Data;
+
+                        //if (!this.)
+
+
                         string orderId = $"BirthdayQuest.{npc}.BirthdayGift";
-
                         data[orderId] = this.BuildBirthdaySpecialOrderData(npc);
-
                     }
-                    );
-            }
+                }
+            });
         }
 
         // add quest to active quests for birthday npcs
@@ -247,6 +285,11 @@ namespace BirthdayQuest
         private void ShowNextBirthdayNotification()
         {
             if (birthdayNpc.Count == 0)
+            {
+                return;
+            }
+
+            if (!this.Config.BirthdayNotification)
             {
                 return;
             }
